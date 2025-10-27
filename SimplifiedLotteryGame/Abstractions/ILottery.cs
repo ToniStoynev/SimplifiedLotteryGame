@@ -4,15 +4,15 @@ namespace SimplifiedLotteryGame.Abstractions;
 
 public interface ILottery
 {
-    void WelcomePlayer(Player player);
+    void PurchaseTickets(Player player);
 
-    void PurchaceTicket(Player player);
+    int PurchaseTicketsForCpuPlayers();
 
-    void PurchaseTicketsForCpuPlayers();
-
-    void DeterminePrizes();
-
-    void PresentResult();
-
+    int DetermineGrandPrize();
+    
+    Dictionary<int, int> DetermineSecondTier();
+    
+    Dictionary<int, int> DetermineThirdTier();
+    
     void Run();
 }
