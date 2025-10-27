@@ -19,6 +19,7 @@ public class TicketNumberParser(IPresentation presentation, IOptionsMonitor<Lott
             if (ticketsCount < options.CurrentValue.MinNumberOfTicketsPerPlayer || ticketsCount > options.CurrentValue.MaxNumberOfTicketsPerPlayer)
             {
                 presentation.Present(MessageTemplates.InvalidTicketNumberMessage(options.CurrentValue.MinNumberOfTicketsPerPlayer, options.CurrentValue.MaxNumberOfTicketsPerPlayer));
+                input = presentation.ReadInput();
                 continue;
             }
             
