@@ -25,71 +25,72 @@ public class SimplifiedLottery(
 
     private decimal HouseProfit => TotalTicketsRevenue - PrizeAllocation;
     
-    public void PurchaseTickets(Player player)
+    public void SellTickets(ICollection<Player> players)
     {
-        inputParser.TryParseInput(presentation.ReadInput(), out var ticketsCounts);
-        player.Balance -= ticketsCounts * options.CurrentValue.TicketPrice;
-        var playerOneTickets = Enumerable.Range(1, ticketsCounts).Select(_ => new Ticket(Guid.NewGuid(), 1)).ToList();
-        _tickets.AddRange(playerOneTickets);
-    }
-
-    public int PurchaseTicketsForCpuPlayers()
-    {
-        var cpuPlayersNumber = randomGenerator.GenerateRandomNumberBetween(options.CurrentValue.MinNumberOfPlayers, options.CurrentValue.MaxNumberOfPlayers);
-        
-        for (var i = 2; i < cpuPlayersNumber + 2; i++)
+        foreach (var player in players)
         {
-            var player = new Player { Id = i };
-            var ticketsCount = randomGenerator.GenerateRandomNumberBetween(options.CurrentValue.MinNumberOfTicketsPerPlayer, options.CurrentValue.MaxNumberOfTicketsPerPlayer);
-            var playerTickets = Enumerable.Range(1, ticketsCount).Select(_ => new Ticket(Guid.NewGuid(), player.Id)).ToList();
-            _tickets.AddRange(playerTickets);
+            _tickets.AddRange(player.Tickets);
         }
-
-        return cpuPlayersNumber;
     }
     
-    public int DetermineGrandPrize()
+    public Ticket DrawGrandWinningTicket()
     {
         var randomIndex = randomGenerator.GenerateRandomNumberBetween(0, _tickets.Count);
        
         var ticket = _tickets[randomIndex];
        
-        _tickets.RemoveAt(randomIndex);
+        _tickets.Remove(ticket);
 
-        return ticket.PlayerId;
+        return ticket;
     }
     
-    public Dictionary<int, int> DetermineSecondTier()
+    public List<Ticket> DrawSecondTierWinningTickets()
     {
         var winningTicketsNumber = (int)Math.Round(_tickets.Count * options.CurrentValue.SecondTierPrizeShareRatio);
         var secondTierWinningTickets= _tickets.OrderBy(_ => randomGenerator.GenerateRandomNumber()).Take(winningTicketsNumber).ToList();
         _tickets.RemoveAll(ticket => secondTierWinningTickets.Contains(ticket));
-        return secondTierWinningTickets.GroupBy(x => x.PlayerId).ToDictionary(x => x.Key, x => x.Count());
+        return secondTierWinningTickets;
     }
     
-    public Dictionary<int, int> DetermineThirdTier()
+    public List<Ticket> DrawThirdTierWinningTickets()
     {
         var winningTicketsNumber = (int)Math.Round(_tickets.Count * options.CurrentValue.ThirdTierPrizeShareRatio);
         var thirdTierWinningTickets= _tickets.OrderBy(_ => randomGenerator.GenerateRandomNumber()).Take(winningTicketsNumber).ToList();
-        return thirdTierWinningTickets.GroupBy(x => x.PlayerId).ToDictionary(x => x.Key, x => x.Count());
+        return thirdTierWinningTickets;
     }
     
     public void Run()
     {
-        var player = new Player { Id = 1 };
+        var players = new List<Player>();
+        var player = new Player(1);
         presentation.Present(MessageTemplates.WelcomePlayerTemplate(player, options.CurrentValue.TicketPrice));
+        inputParser.TryParseInput(presentation.ReadInput(), out var ticketsCount);
+        player.BuyTickets(ticketsCount);
+        players.Add(player);
         
-        PurchaseTickets(player);
+        var cpuPlayersNumber = randomGenerator.GenerateRandomNumberBetween(options.CurrentValue.MinNumberOfPlayers, options.CurrentValue.MaxNumberOfPlayers);
+
+        for (var i = 2; i < cpuPlayersNumber + 2; i++)
+        {
+            var cpuPlayer = new Player(i);
+            var cpuPlayerTicketsCount = randomGenerator
+                .GenerateRandomNumberBetween(options.CurrentValue.MinNumberOfTicketsPerPlayer, options.CurrentValue.MaxNumberOfTicketsPerPlayer);
+            cpuPlayer.BuyTickets(cpuPlayerTicketsCount);
+            players.Add(cpuPlayer);
+        }
         
-        var cpuPlayersNumber = PurchaseTicketsForCpuPlayers();
+        SellTickets(players);
         
         presentation.Present(MessageTemplates.CpuPlayersTicketPurchasedMessage(cpuPlayersNumber));
         
-        var grandPrizeWinnerId = DetermineGrandPrize();
-        var secondTierWinners = DetermineSecondTier();
-        var thirdTierWinners = DetermineThirdTier();
+        var grandPrizeWinningTicket = DrawGrandWinningTicket();
+        var secondTierWinningTickets= DrawSecondTierWinningTickets();
+        var thirdTierWinningTickets= DrawThirdTierWinningTickets();
         
-        presentation.PresentResults(GrandPrize, grandPrizeWinnerId, secondTierWinners, thirdTierWinners,
+        presentation.PresentResults(GrandPrize, 
+            grandPrizeWinningTicket.PlayerId, 
+            secondTierWinningTickets.GroupBy(x => x.PlayerId).ToDictionary(x => x.Key, x => x.Count()), 
+            thirdTierWinningTickets.GroupBy(x => x.PlayerId).ToDictionary(x => x.Key, x => x.Count()),
             SecondTier, ThirdTier, HouseProfit,
             _tickets.Count, options.CurrentValue);
     }
