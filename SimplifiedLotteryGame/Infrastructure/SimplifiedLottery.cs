@@ -25,6 +25,8 @@ public class SimplifiedLottery(
 
     private decimal HouseProfit => TotalTicketsRevenue - PrizeAllocation;
     
+    public IReadOnlyCollection<Ticket> Tickets => _tickets.AsReadOnly();
+    
     public void SellTickets(ICollection<Player> players)
     {
         foreach (var player in players)
@@ -56,6 +58,7 @@ public class SimplifiedLottery(
     {
         var winningTicketsNumber = (int)Math.Round(_tickets.Count * options.CurrentValue.ThirdTierPrizeShareRatio);
         var thirdTierWinningTickets= _tickets.OrderBy(_ => randomGenerator.GenerateRandomNumber()).Take(winningTicketsNumber).ToList();
+        _tickets.RemoveAll(ticket => thirdTierWinningTickets.Contains(ticket));
         return thirdTierWinningTickets;
     }
     
